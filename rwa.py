@@ -30,7 +30,7 @@ def ActRecorder(layer, net, NBatches=100, BSize=1000, inputX=64, inputY=64, zero
         for i in range(NBatches):
             # set noise pattern distribution
             if zeroMean:
-                X = (torch.rand(BSize, 3, inputX, inputY) - 0.5) * 127.5 # zero mean noise, [-127.5, 127.5]
+                X = (torch.rand(BSize, 3, inputX, inputY) - 0.5) * 255 # zero mean noise, [-127.5, 127.5]
             else:
                 X = torch.rand(BSize, 3, inputX, inputY) * 255 # non-zero mean noise, [0, 255]
             # forward pass
@@ -85,7 +85,7 @@ def RWA(layer, net, act_conv, noise, NBatches=100, BSize=1000, inputX=64, inputY
     return rf
 
 
-def RWC(layer, net, act_conv, noise, rf, NBatches=100, BSize=1000, inputX=64, inputY=64, zeroMean=Falsee):
+def RWC(layer, net, act_conv, noise, rf, NBatches=100, BSize=1000, inputX=64, inputY=64, zeroMean=False):
     '''
     This function performs response-weighted covariance analysis to estimate the autocorrelation matrix
     of the receptive field of each unit in the specified layer.
@@ -99,7 +99,7 @@ def RWC(layer, net, act_conv, noise, rf, NBatches=100, BSize=1000, inputX=64, in
     for i in range(NUnits): # normalise rf1 to to be the same scale as noise
         if rf1[i].any() != 0:
             if zeroMean:
-                rf1[i] = ((rf1[i] - rf1[i].min()) / (rf1[i].max() - rf1[i].min()) - 0.5) * 127.5 # [-127.5, 127.5]
+                rf1[i] = ((rf1[i] - rf1[i].min()) / (rf1[i].max() - rf1[i].min()) - 0.5) * 255 # [-127.5, 127.5]
             else:
                 rf1[i] = (rf1[i] - rf1[i].min()) / (rf1[i].max() - rf1[i].min()) * 255.0 # [0, 255]
     noise1 = noise.reshape(noise.shape[0], -1, 3) # reshaped into (NBatches*BSize, inputX*inputY, 3)
