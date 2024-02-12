@@ -1,3 +1,5 @@
+# this file trains and saves the CNN model used for MNIST classification
+
 from __future__ import print_function
 import argparse
 import torch
