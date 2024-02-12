@@ -59,6 +59,60 @@ def ActRecorder(layer, net, NBatches=100, BSize=1000, inputX=64, inputY=64, zero
     
     return act_conv, noise
 
+def ActRecorder_mnist(layer, net, NBatches=100, BSize=1000, inputX=28, inputY=28, zeroMean=False):
+    '''
+    This function records the activations of the units in a specified layer of the network
+    using an ensemble of noise patterns generated from a uniform distribution.
+    '''    
+    # initialisations
+    NUnits = net.get_submodule(layer).out_channels
+    noise = [] # input noise patterns
+    act_conv = [[] for i in range(NUnits)] # responses of conv units to be recorded
+    
+    # get the centre locations of activation map
+    X = (torch.rand(BSize, 1, inputX, inputY) - 0.5) * 255 # colored noise pattern ensemble
+    x1,x2 = net(X) # forward pass to get the activation map
+    if layer == 'conv1':
+        nR,nC = x1[0,0,:,:].shape
+    elif layer == 'conv2':
+        nR,nC = x2[0,0,:,:].shape
+    rloc, cloc = int(round(float(nR)/2.0)), int(round(float(nC)/2.0))
+
+    # forward pass to record activations
+    net.eval()
+    with tqdm(total=NBatches) as pbar:
+        for i in range(NBatches):
+            # set noise pattern distribution
+            if zeroMean:
+                X = (torch.rand(BSize, 1, inputX, inputY) - 0.5) * 255 # zero mean noise, [-127.5, 127.5]
+            else:
+                X = torch.rand(BSize, 1, inputX, inputY) * 255 # non-zero mean noise, [0, 255]
+            # forward pass
+            with torch.no_grad():
+                x1,x2 = net(X)
+            # record the activations for each unit using the same noise ensemble
+            for j in range(NUnits):
+                if layer == 'conv1':
+                    act_conv[j].append(x1[:, j, rloc, cloc])
+                elif layer == 'conv2':
+                    act_conv[j].append(x2[:, j, rloc, cloc])
+            noise.append(X)
+            pbar.update(1)
+            
+    # reshape the activation and noise for analysis and visualisation
+    with tqdm(total=NUnits) as pbar:
+        for i in range(NUnits):
+            act_conv[i] = torch.cat(act_conv[i])
+            pbar.update(1)
+    act_conv = torch.stack(act_conv)
+    noise = torch.cat(noise)
+    noise = np.transpose(noise, (0, 2, 3, 1)) # transform to visualisation format in rgb state
+    
+    print(f"Shape of activation response list: {act_conv.shape}")
+    print(f"Shape of noise list: {noise.shape}")
+
+    return act_conv, noise
+
 
 def RWA(layer, net, act_conv, noise, NBatches=100, BSize=1000, inputX=64, inputY=64, absolute=False):
     '''
