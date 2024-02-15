@@ -219,7 +219,7 @@ def eigenAnalysis(cov, unit):
     This function performs eigenanalysis on the covariance matrix of the receptive field.
     '''
     eigen = []
-    for i in range(3):
+    for i in range(cov.shape[3]):
         eigen.append(torch.linalg.eigh(cov[unit, :, :, i]))
     return eigen
 
