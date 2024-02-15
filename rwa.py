@@ -177,6 +177,42 @@ def RWC(layer, net, act_conv, noise, rf, NBatches=100, BSize=1000, inputX=64, in
     
     return cov
 
+def RWC_mnist(layer, net, act_conv, noise, rf, NBatches=100, BSize=1000, inputX=28, inputY=28, zeroMean=False):
+    '''
+    This function performs response-weighted covariance analysis to estimate the autocorrelation matrix
+    of the receptive field of each unit in the specified layer.
+    '''
+    # initialisations
+    NUnits = net.get_submodule(layer).out_channels
+    cov = torch.zeros((NUnits, inputX*inputY, inputX*inputY, 1)) # covariance matrix
+    
+    # reshape rf and noise for RWC operations
+    rf1 = rf.reshape(rf.shape[0], -1, 1) # reshaped into (NUnits, inputX*inputY, 1)
+    for i in range(NUnits): # normalise rf1 to to be the same scale as noise
+        if rf1[i].any() != 0:
+            if zeroMean:
+                rf1[i] = ((rf1[i] - rf1[i].min()) / (rf1[i].max() - rf1[i].min()) - 0.5) * 255 # [-127.5, 127.5]
+            else:
+                rf1[i] = (rf1[i] - rf1[i].min()) / (rf1[i].max() - rf1[i].min()) * 255.0 # [0, 255]
+    noise1 = noise.reshape(noise.shape[0], -1, 1) # reshaped into (NBatches*BSize, inputX*inputY, 3)
+
+    print(f"Shape of reshaped receptive field list: {rf1.shape}")
+    print(f"Shape of reshaped noise list: {noise1.shape}")
+    
+    # response-weighted covariance            
+    with tqdm(total=NBatches*NUnits*BSize) as pbar:
+        for i in range(NUnits):
+            mu = rf1[i]
+            for j in range(NBatches*BSize):
+                tmp = noise1[j] - mu
+                cov[i,:,:,0] += act_conv[i, j] * (tmp @ tmp.T)
+                pbar.update(1)
+            cov[i] /= (act_conv[i] != 0).sum() # divide cov[i] by the number of non-zero values in act_conv[i]
+
+    print(f"Shape of covariance matrix list: {cov.shape}")
+    
+    return cov
+
 
 def eigenAnalysis(cov, unit):
     '''
