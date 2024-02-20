@@ -246,3 +246,41 @@ def PWA(layer, net, act_conv, noise, window, NBatches=100, BSize=1000, inputX=64
     print(f"Shape of receptive field list: {rf.shape}")
     
     return rf
+
+def corr_loc(noise, act_conv, rf, threshold=0.01):
+    '''
+    This function calculates the correlation between each noise pixel and the activation
+    in order to locate the actual receptive field for neurons in a given layer.
+    '''
+    correlation = np.zeros((noise.shape[1], noise.shape[2]))
+
+    # calculate pearson correlation coefficient between each noise pixel and activation
+    for i in range(act_conv.shape[0]): # each neuron
+        for j in range(noise.shape[1]):
+            for k in range(noise.shape[2]):
+                correlation[j,k] += abs(np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1])
+    
+    # get the average correlation value
+    correlation = correlation / act_conv.shape[0]
+    
+    # create binary mask
+    threshold = threshold
+    mask = correlation > threshold
+    
+    # get the coordinates of the mask where the value is True as a list of (x, y) tuples
+    coords = np.argwhere(mask)
+
+    # calculate the width and height of the bounding box for coords
+    x0, y0 = coords.min(axis=0)
+    x1, y1 = coords.max(axis=0)
+    width = x1 - x0 + 1
+    height = y1 - y0 + 1
+
+    # create a torch tensor to store the cropped receptive fields
+    rf_cropped = torch.zeros((rf.shape[0], width, height))
+
+    # rf1_cropped is the cropped version of rf1 using the bounding box
+    for i in range(rf.shape[0]):
+        rf_cropped[i] = rf[i, x0:x1+1, y0:y1+1]
+
+    return rf_cropped
