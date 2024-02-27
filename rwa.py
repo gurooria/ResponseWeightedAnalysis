@@ -288,4 +288,4 @@ def rf_crop(correlation, rf, threshold=0.01):
     for i in range(rf.shape[0]):
         rf_cropped[i] = rf[i, x0:x1+1, y0:y1+1]
     
-    return mask, rf_cropped
+    return rf_cropped, mask
