@@ -247,7 +247,7 @@ def PWA(layer, net, act_conv, noise, window, NBatches=100, BSize=1000, inputX=64
     
     return rf
 
-def corr_loc(noise, act_conv, rf, threshold=0.01):
+def corr_loc(noise, act_conv):
     '''
     This function calculates the correlation between each noise pixel and the activation
     in order to locate the actual receptive field for neurons in a given layer.
@@ -262,6 +262,11 @@ def corr_loc(noise, act_conv, rf, threshold=0.01):
     
     # get the average correlation value
     correlation = correlation / act_conv.shape[0]
+
+    return correlation
+
+
+def rf_crop(correlation, rf, threshold=0.01):
     
     # create binary mask
     threshold = threshold
@@ -282,5 +287,5 @@ def corr_loc(noise, act_conv, rf, threshold=0.01):
     # rf1_cropped is the cropped version of rf1 using the bounding box
     for i in range(rf.shape[0]):
         rf_cropped[i] = rf[i, x0:x1+1, y0:y1+1]
-
-    return rf_cropped, mask, correlation
+    
+    return mask, rf_cropped
