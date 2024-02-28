@@ -252,7 +252,7 @@ def corr_loc(noise, act_conv):
     This function calculates the correlation between each noise pixel and the activation
     in order to locate the actual receptive field for neurons in a given layer.
     '''
-    correlation = np.zeros((noise.shape[1], noise.shape[2]))
+    correlation = torch.zeros((noise.shape[1], noise.shape[2]))
 
     # calculate pearson correlation coefficient between each noise pixel and activation
     for i in range(act_conv.shape[0]): # each neuron
