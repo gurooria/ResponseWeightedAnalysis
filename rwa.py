@@ -268,6 +268,9 @@ def corr_loc(noise, act_conv):
 
 def rf_crop(correlation, rf, threshold=0.01):
     
+    # convert correlation to numpy array
+    correlation = correlation.numpy()
+    
     # create binary mask
     threshold = threshold
     mask = correlation > threshold
