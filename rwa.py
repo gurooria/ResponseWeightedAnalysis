@@ -255,10 +255,12 @@ def corr_loc(noise, act_conv):
     correlation = torch.zeros((noise.shape[1], noise.shape[2]))
 
     # calculate pearson correlation coefficient between each noise pixel and activation
-    for i in range(act_conv.shape[0]): # each neuron
-        for j in range(noise.shape[1]):
-            for k in range(noise.shape[2]):
-                correlation[j,k] += abs(np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1])
+    with tqdm(total=act_conv.shape[0] * noise.shape[1] * noise.shape[2]) as pbar:
+        for i in range(act_conv.shape[0]): # each neuron
+            for j in range(noise.shape[1]):
+                for k in range(noise.shape[2]):
+                    correlation[j,k] += abs(np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1])
+                    pbar.update(1)
     
     # get the average correlation value
     correlation = correlation / act_conv.shape[0]
