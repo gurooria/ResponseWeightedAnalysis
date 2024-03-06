@@ -207,19 +207,6 @@ def CorrRWA(act_conv, noise):
     
     return rf
 
-def MutualRWA(act_Conv, noise):
-    '''
-    This function estimates the receptive field of each unit in the specified layer using
-    mutual information - for single channel only.
-    '''
-    
-    # intialisations
-    num_units = act_conv.shape[0]
-    rf = torch.zeros((num_units, noise.shape[1], noise.shape[2])) # single channel
-    
-    
-    return
-
 
 # Receptive Field Cropping
 
