@@ -2,7 +2,7 @@
 import torch
 from tqdm import tqdm
 import numpy as np
-
+import math
 
 ## activation recorders
 
@@ -180,6 +180,35 @@ def RWC(act_conv, noise, rf, zero_mean=True):
             cov[i] /= act_conv[i][act_conv[i] != 0].shape[0]
         
     return cov
+
+def input_PCA(act_conv, noise, rf, zero_mean=True):
+    
+    # initialisations
+    num_units = act_conv.shape[0]
+    input = torch.zeros(num_units, noise.shape[1]*noise.shape[2]*noise.shape[3])
+
+    # reformat rf data to fit with noise
+    if zero_mean:
+        rf1 = ((rf - rf.min()) / (rf.max() - rf.min()) - 0.5) * 255 # normalise to [-127.5, 127.5]
+    else:
+        rf1 = (rf - rf.min()) / (rf.max() - rf.min()) * 255 # normalise to [0, 255]
+    # reshape the rf and noise for analysis
+    rf1 = rf1.reshape(num_units, -1)
+    noise1 = noise.reshape(noise.shape[0], -1)
+    
+    # calculate the response-weighted covariance
+    with tqdm(total = num_units * noise.shape[0]) as pbar:
+        for i in range(num_units):
+            mu = noise1 - rf1[i]
+            count = 0
+            for j in range(noise.shape[0]):
+                input[i] += math.sqrt(abs(act_conv[i, j])) * mu[j]
+                if act_conv[i, j] != 0:
+                    count += 1
+                pbar.update(1)
+            input[i] /= count
+    
+    return input
 
 def CorrRWA(act_conv, noise):
     '''
