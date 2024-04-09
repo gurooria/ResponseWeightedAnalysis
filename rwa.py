@@ -159,26 +159,22 @@ def RWC(act_conv, noise, rf, zero_mean=True):
     
     # initialisations
     num_units = act_conv.shape[0]
-    cov = torch.zeros(num_units, noise.shape[1]*noise.shape[2], noise.shape[1]*noise.shape[2])
+    cov = torch.zeros(num_units, noise.shape[1], noise.shape[1])
 
-    # reformat rf data to fit with noise
+    # reformat magnitudes of rf data to fit with noise
     if zero_mean:
         rf1 = ((rf - rf.min()) / (rf.max() - rf.min()) - 0.5) * 255 # normalise to [-127.5, 127.5]
     else:
         rf1 = (rf - rf.min()) / (rf.max() - rf.min()) * 255 # normalise to [0, 255]
-    # reshape the rf and noise for analysis
-    rf1 = rf1.reshape(num_units, -1)
-    noise1 = noise.reshape(noise.shape[0], -1)
     
     # calculate the response-weighted covariance
     with tqdm(total = num_units * noise.shape[0]) as pbar:
-        for i in range(num_units):
-            mu = noise1 - rf1[i]
-            for j in range(noise.shape[0]):
+        for i in range(num_units): # go through each unit
+            mu = noise - rf1[i] # zero mean
+            for j in range(noise.shape[0]): # go through each noise pattern & weight them
                 cov[i] += act_conv[i, j] * (mu[j].unsqueeze(1) @ mu[j].unsqueeze(0))
                 pbar.update(1)
             cov[i] /= act_conv[i][act_conv[i] != 0].shape[0]
-        
     return cov
 
 def input_PCA(act_conv, noise, rf, zero_mean=True):
