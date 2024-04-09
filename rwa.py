@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import math
 
-## activation recorders
+## Activation recorders ------------------------------------------------------------------------------------------------------
 
 def JacoActRecorder(layer, net, batch_num, batch_size, input_x=64, input_y=64, zero_mean=True):
     '''
@@ -118,7 +118,7 @@ def MnistActRecorder(layer, net, batch_num, batch_size, input_x=28, input_y=28, 
     return act_conv, noise
 
 
-## response-weighted analysis
+## Response-weighted analysis ------------------------------------------------------------------------------------------------
 
 def RWA(act_conv, noise, absolute=False):
     '''
@@ -133,7 +133,6 @@ def RWA(act_conv, noise, absolute=False):
     # calculate the receptive field using response-weighted average
     with tqdm(total = num_units * noise.shape[0]) as pbar:
         for i in range(num_units):
-            count = 0 # count the number of non-zero activations
             for j in range(noise.shape[0]):
                 # select mode of calculation (absolute or not)
                 if absolute:
@@ -145,66 +144,30 @@ def RWA(act_conv, noise, absolute=False):
                     count += 1
                 pbar.update(1)
             # normalise by the number of non-zero activations
-            if count != 0:
-                rf[i] /= count
-
+            if act_conv[i][act_conv[i] != 0].shape[0] != 0: # avoid division by zero
+                rf[i] /= act_conv[i][act_conv[i] != 0].shape[0]
+                
     print(f"Shape of receptive field list: {rf.shape}")
-    
     return rf
 
-def RWC(act_conv, noise, rf, zero_mean=True):
+def RWC(act_conv, mu):
     '''
-    This function performs response-weighted covariance.
+    This function performs response-weighted covariance, returns the covariance matrix of the noise patterns.
+    Inputs are CROPPED noise and rf + the activation responses.
     '''
-    
-    # initialisations
-    num_units = act_conv.shape[0]
-    cov = torch.zeros(num_units, noise.shape[1], noise.shape[1])
-
-    # reformat magnitudes of rf data to fit with noise
-    if zero_mean:
-        rf1 = ((rf - rf.min()) / (rf.max() - rf.min()) - 0.5) * 255 # normalise to [-127.5, 127.5]
-    else:
-        rf1 = (rf - rf.min()) / (rf.max() - rf.min()) * 255 # normalise to [0, 255]
+    cov = torch.zeros(mu.shape[0], mu.shape[2], mu.shape[2]) 
     
     # calculate the response-weighted covariance
-    with tqdm(total = num_units * noise.shape[0]) as pbar:
-        for i in range(num_units): # go through each unit
-            mu = noise - rf1[i] # zero mean
-            for j in range(noise.shape[0]): # go through each noise pattern & weight them
-                cov[i] += act_conv[i, j] * (mu[j].unsqueeze(1) @ mu[j].unsqueeze(0))
+    with tqdm(total = mu.shape[0] * mu.shape[1]) as pbar:
+        for i in range(mu.shape[0]): # each unit
+            for j in range(mu.shape[1]): # each noise pattern
+                cov[i] += act_conv[i,j] * (mu[i, j].unsqueeze(1) @ mu[i, j].unsqueeze(0))
                 pbar.update(1)
-            cov[i] /= act_conv[i][act_conv[i] != 0].shape[0]
+            # normalise by the number of non-zero activations
+            if act_conv[i][act_conv[i] != 0].shape[0] != 0: # avoid division by zero
+                cov[i] /= act_conv[i][act_conv[i] != 0].shape[0]
+
     return cov
-
-def input_PCA(act_conv, noise, rf, zero_mean=True):
-    
-    # initialisations
-    num_units = act_conv.shape[0]
-    input = torch.zeros(num_units, noise.shape[1]*noise.shape[2]*noise.shape[3])
-
-    # reformat rf data to fit with noise
-    if zero_mean:
-        rf1 = ((rf - rf.min()) / (rf.max() - rf.min()) - 0.5) * 255 # normalise to [-127.5, 127.5]
-    else:
-        rf1 = (rf - rf.min()) / (rf.max() - rf.min()) * 255 # normalise to [0, 255]
-    # reshape the rf and noise for analysis
-    rf1 = rf1.reshape(num_units, -1)
-    noise1 = noise.reshape(noise.shape[0], -1)
-    
-    # calculate the response-weighted covariance
-    with tqdm(total = num_units * noise.shape[0]) as pbar:
-        for i in range(num_units):
-            mu = noise1 - rf1[i]
-            count = 0
-            for j in range(noise.shape[0]):
-                input[i] += math.sqrt(abs(act_conv[i, j])) * mu[j]
-                if act_conv[i, j] != 0:
-                    count += 1
-                pbar.update(1)
-            input[i] /= count
-    
-    return input
 
 def CorrRWA(act_conv, noise):
     '''
@@ -219,25 +182,19 @@ def CorrRWA(act_conv, noise):
     # calculate the receptive field using correlation-based response-weighted average
     with tqdm(total = num_units * noise.shape[1] * noise.shape[2]) as pbar:
         for i in range(num_units):
-            count = 0 # count the number of non-zero activations
-            for j in range(noise.shape[1]):
-                for k in range(noise.shape[2]):
-                    rf[i, j, k] = np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1]
-                    # check if the activation is non-zero to record the count
-                    count += 1
+            for j in range(noise.shape[1]): # each row
+                for k in range(noise.shape[2]): # each column
+                    rf[i, j, k] = np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1] # updating pixel by pixel
                     pbar.update(1)
-            # normalise by the number of non-zero activations
-            if count != 0:
-                rf[i] /= count
     
     return rf
 
 
-# Receptive Field Cropping
+## Receptive field cropping --------------------------------------------------------------------------------------------------
 
 def CorrLoc(noise, act_conv):
     '''
-    This function calculates the Pearson correlation between each noise pixel and the activation
+    This function ACCUMULATES the Pearson correlation between each noise pixel and the activation
     in order to locate the actual receptive field for neurons in a given layer.
     '''
     
