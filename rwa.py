@@ -139,9 +139,6 @@ def RWA(act_conv, noise, absolute=False):
                     rf[i] += abs(act_conv[i, j]) * noise[j]
                 else:
                     rf[i] += act_conv[i, j] * noise[j]
-                # check if the activation is non-zero to record the count
-                if act_conv[i, j] != 0:
-                    count += 1
                 pbar.update(1)
             # normalise by the number of non-zero activations
             if act_conv[i][act_conv[i] != 0].shape[0] != 0: # avoid division by zero

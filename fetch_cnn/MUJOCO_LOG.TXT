@@ -1,0 +1,21 @@
+Tue Apr  9 19:59:25 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco\mjpro131\bin
+
+Tue Apr  9 20:00:55 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco\mjpro131\bin
+
+Tue Apr  9 20:02:02 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco\mjpro131\bin
+
+Tue Apr  9 20:02:35 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco\mjpro131\bin
+
+Tue Apr  9 20:18:30 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco\mjpro131\bin
+
+Tue Apr  9 20:20:29 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco\mjpro131
+
+Tue Apr  9 20:21:13 2024
+ERROR: Could not open activation key file C:\Users\glori\.mujoco
+

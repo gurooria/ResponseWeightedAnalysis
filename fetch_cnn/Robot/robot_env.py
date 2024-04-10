@@ -4,7 +4,7 @@ import numpy as np
 import gym
 from gym import error, spaces
 from gym.utils import seeding
-import mujoco
+import mujoco_py
 import random
 
 class RobotEnv():
@@ -16,8 +16,8 @@ class RobotEnv():
         if not os.path.exists(fullpath):
             raise IOError('File {} does not exist'.format(fullpath))
 
-        model = mujoco.load_model_from_path(fullpath)
-        self.sim = mujoco.MjSim(model, nsubsteps=n_substeps)
+        model = mujoco_py.load_model_from_path(fullpath)
+        self.sim = mujoco_py.MjSim(model, nsubsteps=n_substeps)
         self.viewer = None
 
         self.metadata = {
@@ -65,7 +65,7 @@ class RobotEnv():
 
     def _get_viewer(self):
         if self.viewer is None:
-            self.viewer = mujoco.MjViewer(self.sim)
+            self.viewer = mujoco_py.MjViewer(self.sim)
             self._viewer_setup()
         return self.viewer
 
