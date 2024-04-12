@@ -63,7 +63,8 @@ class FetchEnv(robot_env.RobotEnv):
         
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action, subpolicy)
-        if not static: self.move_object_in_circle()
+        if not static: 
+            self.move_object_in_circle()
         #obs = self._get_obs()
         obs_rgb = self.my_render(self.image_dims)
         done = self._get_terminal(subpolicy)
@@ -213,8 +214,8 @@ class FetchEnv(robot_env.RobotEnv):
         view2 = self.sim.render(width=dims, height=dims, camera_name='left')
         view2 = np.rot90(view2, 2)
         # get the two images as 6 channels, reshape to (C, H, W) and normalize 
-        rgb_obs = np.concatenate([view1[:,:,::-1], view2[:,:,::-1]], axis=2).transpose(2, 1, 0) / 255.0 
-        return rgb_obs        
+        # rgb_obs = np.concatenate([view1[:,:,::-1], view2[:,:,::-1]], axis=2).transpose(2, 1, 0) / 255.0 
+        return view1, view2      
     
     def _reset_sim(self):
         
@@ -366,8 +367,8 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('tray:slidey')] = y
 
         goal = self.sim.data.get_body_xpos("goal")
-        x = self.initial_pos_goal[0] - 0.02 + 0.08 * np.sin(t)
-        y = self.initial_pos_goal[1] - 0.09 + 0.08 * np.cos(t)
+        x = self.initial_pos_goal[0] - 0.02 + 0.08 * np.sin(t) * 2
+        y = self.initial_pos_goal[1] - 0.09 + 0.08 * np.cos(t) * 2
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('goal:slidex')] = x 
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('goal:slidey')] = y
         

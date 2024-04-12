@@ -32,7 +32,6 @@ class RobotEnv():
         self.goal = self._sample_goal()
         obs = self._get_obs()
         self.action_space = spaces.Box(-1., 1., shape=(n_actions,), dtype='float32')
-        
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
 
     @property
