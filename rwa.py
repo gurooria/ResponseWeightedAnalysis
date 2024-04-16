@@ -170,6 +170,12 @@ def CorrRWA(act_conv, noise):
     '''
     This function estimates the receptive field of each unit in the specified layer using
     the correlation-based response-weighted average method - for single channel only.
+    
+    Inputs:
+        - act_conv: activation responses of the units in the specified layer
+        - noise: noise patterns used to stimulate the units, single SELECTED channel
+    Output:
+        - rf: receptive field of each unit in the specified layer
     '''
 
     # initialisations
@@ -179,9 +185,11 @@ def CorrRWA(act_conv, noise):
     # calculate the receptive field using correlation-based response-weighted average
     with tqdm(total = num_units * noise.shape[1] * noise.shape[2]) as pbar:
         for i in range(num_units):
+            # go through each noise pixel
             for j in range(noise.shape[1]): # each row
                 for k in range(noise.shape[2]): # each column
-                    rf[i, j, k] = np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1] # updating pixel by pixel
+                    # compute correlation between activation and noise pixel
+                    rf[i, j, k] = np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1] # returns a matrix and so we take the value at [0, 1]
                     pbar.update(1)
     
     return rf
