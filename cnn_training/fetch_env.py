@@ -1,7 +1,9 @@
 import numpy as np
-from Robot import rotations, robot_env, utils
+import robot_env
 import random
+import utils
 import math
+import rotations
 
 class FetchEnv(robot_env.RobotEnv):
     """Superclass for all Fetch environments."""
@@ -22,28 +24,19 @@ class FetchEnv(robot_env.RobotEnv):
         super(FetchEnv, self).__init__(model_path=model_path, n_actions= self.n_actions, initial_qpos=initial_qpos, n_substeps = self.n_substeps)
         np.random.seed(self.seed)
     
-    def _set_action(self, action, subpolicy):
+    def _set_action(self, action):
         # set the action range for the gripper
         assert action.shape == (3,) # assert means that the condition should be true, otherwise it will raise an error
         action = action.copy()  
         pos_ctrl = action[:3]
-        if subpolicy == 1:
-            gripper_ctrl = 1 # open fingers
-            pos_ctrl *= 0.017  # limit maximum change in position
-        elif subpolicy == 2:
-            gripper_ctrl = -1 # closed fingers
-            pos_ctrl *= 0.017  # limit maximum change in position
-        elif subpolicy == 3:
-            gripper_ctrl = -1 # closed fingers
-            pos_ctrl *= 0.019  # limit maximum change in position
-
-       # pos_ctrl *= 0.016  # limit maximum change in position
+        gripper_ctrl = 1 # open fingers
+        pos_ctrl *= 0.017  # limit maximum change in position
         rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
         gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
         assert gripper_ctrl.shape == (2,)
         action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
 
-        # Apply action to simulation.
+        # Apply action to simulation
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
         
@@ -52,30 +45,30 @@ class FetchEnv(robot_env.RobotEnv):
         did_reset_sim = False
         while not did_reset_sim:
             did_reset_sim = self._reset_sim()
-        #self.goal = self._sample_goal().copy()
+
         obs = self._get_obs() # get the observation
         obs_rgb = self.my_render(self.image_dims) # get the rgb observation
         return obs_rgb #, obs
     
-    def step(self, action, subpolicy, static = False): ## indicate if tray is static or not !!
+    def step(self, action):
         # Take a step in the simulation
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        self._set_action(action, subpolicy) # set the action for the gripper
+        self._set_action(action) # set the action for the gripper
+        self.move_object_in_circle()
         
-        if not static: # moving target
-            self.move_object_in_circle()
-        #obs = self._get_obs()
+        # get observations
+        obs = self._get_obs()
         obs_rgb = self.my_render(self.image_dims)
-        done = self._get_terminal(subpolicy) # check if the subpolicy is done
-        reward, successful = self.reward(subpolicy)
+        done = self._get_terminal() # check if the subpolicy is done
+        reward, successful = self.reward()
         if successful: done = True # if the subpolicy is successful, then the episode is done
         
         for _ in range(5): # 5 steps for each action
             self.sim.step()
 
-        return obs_rgb, reward, done, successful
+        return obs_rgb, obs
         
-    def _get_terminal(self, subpolicy): # create terminal for each subtask
+    def _get_terminal(self): # create terminal for each subtask
         # Check if the subpolicy is done
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         object_pos = self.sim.data.get_site_xpos('object0')
@@ -83,70 +76,31 @@ class FetchEnv(robot_env.RobotEnv):
         tray_pos = self.sim.data.get_site_xpos('tray')
         timestep = self.sim.data.time * 10
         
-        if subpolicy == 1:
-            # Check if gripper is too far away from object
-            if np.linalg.norm(grip_pos - object_pos) > 0.4:
-                return True
-            # Check if object is outside the tray
-            elif np.linalg.norm(tray_pos - object_pos) > 0.1:
-                return True
-            return False
-        
-        elif subpolicy == 2: 
-            if np.linalg.norm(grip_pos - object_pos) > 0.1:
-                return True
-            return False
+        # Check if gripper is too far away from object
+        if np.linalg.norm(grip_pos - object_pos) > 0.4:
+            return True
+        # Check if object is outside the tray
+        elif np.linalg.norm(tray_pos - object_pos) > 0.1:
+            return True
+        return False
+
             
-        elif subpolicy == 3:
-            # Check if object is too far away from goal
-            if np.linalg.norm(goal_pos - object_pos) > 0.4:
-                return True
-            if object_pos[2] > 0.4 + 0.3:
-                return True
-            return False
-            
-    def reward(self, subpolicy):
+    def reward(self):
         grip_initial = self.initial_gripper_xpos
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         object_pos = self.sim.data.get_site_xpos('object0')
         goal_pos = self.sim.data.get_site_xpos('goal') #the red tray
         
-        if subpolicy == 1:
-            dx = grip_pos[0] - object_pos[0]
-            dy = grip_pos[1] - object_pos[1]
-            dz = grip_pos[2] - object_pos[2]
-            
-            threshold = 0.015
-            # calculate the distance between gripper and object in 3D space
-            distance = np.sqrt(dx ** 2 + dy ** 2 + dz ** 2) 
-
-            if distance <= threshold: return 10, True ## indicate if it's succesfull
-            return - distance , False
+        dx = grip_pos[0] - object_pos[0]
+        dy = grip_pos[1] - object_pos[1]
+        dz = grip_pos[2] - object_pos[2]
         
-        elif subpolicy == 2: 
-            # calculate distance between gripper and object in x, y and z axes
-            dx = object_pos[0] - grip_initial[0]
-            dy = object_pos[1] - grip_initial[1]
-            dz = object_pos[2] - grip_initial[2]
+        threshold = 0.015
+        # calculate the distance between gripper and object in 3D space
+        distance = np.sqrt(dx ** 2 + dy ** 2 + dz ** 2) 
 
-            height = np.sqrt(dz**2)
-            if height <= 0.005 : return 10, True ## indicate if it's succesfull
-            return - height - 0.1, False
-            
-        elif subpolicy == 3:
-            # calculate distance between gripper and object in x, y and z axes
-            dx = goal_pos[0] - object_pos[0]
-            dy = goal_pos[1] - object_pos[1]
-            dz = goal_pos[2] - object_pos[2]
-
-            # calculate the distance between goal and object in 3D space
-            distance_x_y = np.sqrt(dx **2 + dy **2)# + dz **2)
-            distance = np.sqrt(dx **2 + dy **2 + dz **2)
-            #heigth = np.sqrt(dz**2)
-            #threshold = 0.015
-            
-            if distance_x_y <= 0.02 and object_pos[2] < 0.4 + 0.055: return 10, True ## indicate if it's succesfull
-            return - distance, False
+        if distance <= threshold: return 10, True ## indicate if it's succesfull
+        return - distance , False
 
     def _get_obs(self):
         # Get the observation of the environment
@@ -177,13 +131,8 @@ class FetchEnv(robot_env.RobotEnv):
         
         obs = np.concatenate([goal_pos.ravel(), goal_velp.ravel()])
         
-        # obs = np.concatenate([grip_initial.ravel(), goal_pos.ravel(), goal_rot.ravel(), 
-        #     grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
-        #     object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,])
-
         return obs.copy()
             
-    
     def _viewer_setup(self):
         body_id = self.sim.model.body_name2id('robot0:gripper_link')
         lookat = self.sim.data.body_xpos[body_id]
@@ -209,12 +158,11 @@ class FetchEnv(robot_env.RobotEnv):
         return view1[:,:,::-1], view2[:,:,::-1]
     
     def my_render(self, dims): 
+        # renders rgb camera views
         view1 = self.sim.render(width=dims, height=dims, camera_name='front')
         view1 = np.rot90(view1, 2)
         view2 = self.sim.render(width=dims, height=dims, camera_name='left')
         view2 = np.rot90(view2, 2)
-        # get the two images as 6 channels, reshape to (C, H, W) and normalize 
-        # rgb_obs = np.concatenate([view1[:,:,::-1], view2[:,:,::-1]], axis=2).transpose(2, 1, 0) / 255.0 
         return view1, view2      
     
     def _reset_sim(self):
@@ -250,8 +198,8 @@ class FetchEnv(robot_env.RobotEnv):
         sim_state.qpos[goal_x_joint_i] = goal_xpos[0]
         sim_state.qpos[goal_y_joint_i] = goal_xpos[1]
         self.sim.set_state(sim_state)
-        # set the start position
         
+        # set the start position
         object_xpos = np.zeros((3, ))
         object_xpos[:2] = tray_xpos[:2]
         object_xpos[2] = tray_xpos[2] + 0.02
@@ -261,6 +209,7 @@ class FetchEnv(robot_env.RobotEnv):
         #object_qpos[0] += random.choice(range(-1,0))
         self.sim.data.set_joint_qpos('object0:joint', object_qpos)
         self.sim.forward()
+        
         return True
 
 
@@ -369,11 +318,3 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('goal:slidex')] = x 
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('goal:slidey')] = y
         
-        
-
-
-
-
-        
-        
-
