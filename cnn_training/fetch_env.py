@@ -129,7 +129,7 @@ class FetchEnv(robot_env.RobotEnv):
         goal_velp = self.sim.data.get_body_xvelp("goal") * dt # positional velocity of the goal
         goal_rot = rotations.mat2euler(self.sim.data.get_site_xmat('goal'))
         
-        obs = np.concatenate([goal_pos.ravel(), goal_velp.ravel()])
+        obs = np.concatenate([object_pos.ravel(), object_velp.ravel()])
         
         return obs.copy()
             
@@ -304,7 +304,7 @@ class FetchEnv(robot_env.RobotEnv):
         
         
     def move_object_in_circle(self):
-        # Move tray in a circle
+        # Tray (green with red ball inside)
         t = self.sim.data.time / 2
         tray = self.sim.data.get_body_xpos("tray")
         x = self.initial_pos_tray[0] - 0.02 + 0.08 * np.sin(t)  # Change the sign of the sine function
@@ -312,6 +312,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('tray:slidex')] = x
         self.sim.data.qpos[self.sim.model.get_joint_qpos_addr('tray:slidey')] = y
 
+        # Goal (blue)
         goal = self.sim.data.get_body_xpos("goal")
         x = self.initial_pos_goal[0] - 0.02 + 0.08 * np.sin(t) * 2
         y = self.initial_pos_goal[1] - 0.09 + 0.08 * np.cos(t) * 2
