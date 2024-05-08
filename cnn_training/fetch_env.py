@@ -108,6 +108,7 @@ class FetchEnv(robot_env.RobotEnv):
         grip_initial = self.initial_gripper_xpos
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
+        print(dt)
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
         robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
         
@@ -127,9 +128,15 @@ class FetchEnv(robot_env.RobotEnv):
         # goal position
         goal_pos = self.sim.data.get_body_xpos("goal")
         goal_velp = self.sim.data.get_body_xvelp("goal") * dt # positional velocity of the goal
+        goal_velr = self.sim.data.get_body_xvelr("goal") * dt # rotational velocity
         goal_rot = rotations.mat2euler(self.sim.data.get_site_xmat('goal'))
         
-        obs = np.concatenate([object_pos.ravel(), object_velp.ravel()])
+        # tray position
+        tray_pos = self.sim.data.get_body_xpos("tray")
+        tray_velp = self.sim.data.get_body_xvelp("tray") * dt # positional velocity of the tray
+        tray_velr = self.sim.data.get_body_xvelr("tray") * dt # rotational velocity
+        
+        obs = np.concatenate([tray_pos.ravel(), goal_pos.ravel()])
         
         return obs.copy()
             
@@ -171,14 +178,14 @@ class FetchEnv(robot_env.RobotEnv):
 
         # we need to put the object inside of the initial tray
         tray_xpos = np.zeros((3, ))
-        tray_xpos[0] = self.center_of_circle[0] + np.random.uniform( -0.1, 0.1) # up down
-        tray_xpos[1] = self.center_of_circle[1] - 0.35 + 0.3 + np.random.uniform( -0.1, 0.1) # left right .... as you see the front
+        tray_xpos[0] = self.center_of_circle[0] + np.random.uniform( -0.07, 0.07) # up down
+        tray_xpos[1] = self.center_of_circle[1] - 0.35 + 0.3 + np.random.uniform( -0.07, 0.07) # left right .... as you see the front
         tray_xpos[2] = 0.4
         
         # ############ place goal tray
         goal_xpos = np.zeros((3, ))######
-        goal_xpos[0] = self.center_of_circle[0] + np.random.uniform( -0.08, 0.08) 
-        goal_xpos[1] = self.center_of_circle[1] - 0.35 - 0.05 #+ np.random.uniform( -0.08, 0.08) ####### the position is different in xml so no need to change
+        goal_xpos[0] = self.center_of_circle[0] + np.random.uniform( -0.07, 0.07) 
+        goal_xpos[1] = self.center_of_circle[1] - 0.35 - 0.05 + np.random.uniform( -0.07, 0.07) ####### the position is different in xml so no need to change
         goal_xpos[2] = 0.4
         
         self.initial_pos_tray = tray_xpos.copy()
@@ -193,7 +200,7 @@ class FetchEnv(robot_env.RobotEnv):
         
         sim_state = self.sim.get_state()
         
-        sim_state.qpos[x_joint_i] = tray_xpos[0] 
+        sim_state.qpos[x_joint_i] = tray_xpos[0]
         sim_state.qpos[y_joint_i] = tray_xpos[1]
         sim_state.qpos[goal_x_joint_i] = goal_xpos[0]
         sim_state.qpos[goal_y_joint_i] = goal_xpos[1]
