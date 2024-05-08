@@ -108,7 +108,6 @@ class FetchEnv(robot_env.RobotEnv):
         grip_initial = self.initial_gripper_xpos
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
-        print(dt)
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
         robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
         
