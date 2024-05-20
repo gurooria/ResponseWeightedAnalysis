@@ -41,6 +41,8 @@ def ActRecorder(layer, net, model, centre_loc, dim, batch_num, batch_size, zero_
                     activations[unit].append(x1[:, unit, rloc, cloc])
                 elif layer == 'conv2':
                     activations[unit].append(x2[:, unit, rloc, cloc])
+            # Reshape X by moving the 2nd dimension to the last
+            X = torch.transpose(X, 1, len(X.shape)-1)
             noise.append(X)
             pbar.update(1)
         print('Activation recording complete.')
@@ -59,7 +61,7 @@ def ActRecorder(layer, net, model, centre_loc, dim, batch_num, batch_size, zero_
     return activations, noise
 
 
-## 1st Order Receptive Field Estimations
+## Receptive Field Estimations
 def RWA(activations, noise, absolute):
     '''
     This function estimates the receptive field of each unit in the specified layer using
@@ -118,31 +120,63 @@ def CorrRWA(activations, noise):
     return rf
 
 
+def RWC(act_conv, mu):
+    '''
+    This function performs response-weighted covariance, returns the covariance matrix of the noise patterns.
+    Inputs are CROPPED noise and rf + the activation responses.
+    '''
+    cov = torch.zeros(mu.shape[0], mu.shape[2], mu.shape[2]) 
+    
+    # calculate the response-weighted covariance
+    with tqdm(total = mu.shape[0] * mu.shape[1]) as pbar:
+        for i in range(mu.shape[0]): # each unit
+            for j in range(mu.shape[1]): # each noise pattern
+                cov[i] += act_conv[i,j] * (mu[i, j].unsqueeze(1) @ mu[i, j].unsqueeze(0))
+                pbar.update(1)
+            # normalise by the number of non-zero activations
+            if act_conv[i][act_conv[i] != 0].shape[0] != 0: # avoid division by zero
+                cov[i] /= act_conv[i][act_conv[i] != 0].shape[0]
+
+    return cov
+
+
 ## Receptive field cropping
-def CorrCrop(activations, noise, rf, threshold=0.01):
+def CorrMask(noise, act_conv, threshold=0.01):
     '''
     This function ACCUMULATES the Pearson correlation between each noise pixel and the activation
     in order to locate the actual receptive field for neurons in a given layer.
     '''
     
-    # Initialisations
-    cum_correlation = torch.zeros((noise.shape[1], noise.shape[2]))
+    # initialisations
+    correlation = torch.zeros((noise.shape[1], noise.shape[2]))
     
-    # Calculate pearson correlation coefficient between each noise pixel and activation
-    with tqdm(total = activations.shape[0] * noise.shape[1] * noise.shape[2]) as pbar:
-        for i in range(activations.shape[0]): # iterates through each unit
+    # calculate pearson correlation coefficient between each noise pixel and activation
+    with tqdm(total = act_conv.shape[0] * noise.shape[1] * noise.shape[2]) as pbar:
+        for i in range(act_conv.shape[0]): # each neuron
             for j in range(noise.shape[1]):
                 for k in range(noise.shape[2]):
-                    cum_correlation[j,k] += abs(np.corrcoef(activations[i].flatten(), noise[:, j, k].flatten())[0, 1])
+                    correlation[j,k] += abs(np.corrcoef(act_conv[i].flatten(), noise[:, j, k].flatten())[0, 1])
                     pbar.update(1)
-    # Get the average correlation value over the number of units
-    cum_correlation = cum_correlation / activations.shape[0]
+                    
+    # get the average correlation value over the number of units
+    correlation = correlation / act_conv.shape[0]
     
-    # Create binary mask
-    mask = cum_correlation.numpy() > threshold
+    return correlation
+
+
+def RfCrop(correlation, rf, threshold=0.01):
+    '''
+    This function crops the receptive field using the correlation map to locate the actual
+    receptive field for neurons in a given layer.
+    '''
     
-    # Get the coordinates of the bounding box & calculate width + height
+    # create binary mask
+    mask = correlation.numpy() > threshold
+    
+    # get the coordinates of the bounding box
     coords = np.argwhere(mask)
+    
+    # calculate the width and height of the bounding box for coords
     x0, y0 = coords.min(axis=0)
     x1, y1 = coords.max(axis=0)
     width = x1 - x0 + 1
@@ -150,7 +184,9 @@ def CorrCrop(activations, noise, rf, threshold=0.01):
     
     # create a torch tensor to store the cropped receptive fields
     rf_cropped = torch.zeros((rf.shape[0], width, height))
-    for i in range(rf.shape[0]): # iterate through each unit for cropping
+    
+    # rf_cropped is the cropped version of rf using the bounding box
+    for i in range(rf.shape[0]):
         rf_cropped[i] = rf[i, x0:x1+1, y0:y1+1]
     
-    return cum_correlation, rf_cropped, mask
+    return rf_cropped, mask
