@@ -135,7 +135,7 @@ class FetchEnv(robot_env.RobotEnv):
         tray_velp = self.sim.data.get_body_xvelp("tray") * dt # positional velocity of the tray
         tray_velr = self.sim.data.get_body_xvelr("tray") * dt # rotational velocity
         
-        obs = np.concatenate([tray_pos.ravel(), goal_pos.ravel()])
+        obs = np.concatenate([tray_pos.ravel(), goal_pos.ravel(), tray_velp.ravel(), goal_velp.ravel()])
         
         return obs.copy()
             
