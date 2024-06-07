@@ -13,12 +13,12 @@ from torch.optim.lr_scheduler import StepLR
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 5, 1)
-        self.conv2 = nn.Conv2d(32, 64, 5, 1)
+        self.conv1 = nn.Conv2d(1, 16, 5, 1)
+        self.conv2 = nn.Conv2d(16, 32, 5, 1)
         self.dropout1 = nn.Dropout(0.25)
         self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(10*10*64, 128)  
-        self.fc2 = nn.Linear(128, 10)
+        self.fc1 = nn.Linear(10*10*32, 64)  
+        self.fc2 = nn.Linear(64, 10)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -140,7 +140,7 @@ def main():
         test(model, device, test_loader)
         scheduler.step()
 
-    if args.save_model:
+    # if args.save_model:
         torch.save(model.state_dict(), "mnist_cnn.pt")
 
 

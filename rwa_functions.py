@@ -25,10 +25,27 @@ def ActRecorder(layer, net, model, centre_loc, dim, batch_num, batch_size, zero_
     with tqdm(total = batch_num) as pbar:
         for batch in range(batch_num):
             # Generate noise
+            X = torch.randn(batch_size, num_channels, image_dim, image_dim)
+            
+            # scale the noise to the desired range
             if zero_mean:
-                X = (torch.rand(batch_size, num_channels, image_dim, image_dim) - 0.5) * 255 # zero mean uniform noise, [-127.5, 127.5]
+                desired_mean = 0
+                desired_std = 127 / 3
+
+                # Scale the data
+                X = X * desired_std + desired_mean
+
+                # Ensure the data is within the desired range
+                X = torch.clamp(X, -127.5, 127.5)
             else:
-                X = torch.rand(batch_size, num_channels, image_dim, image_dim) * 255 # uniform noise, [0, 255]
+                desired_mean = 127.5
+                desired_std = 127 / 3
+
+                # Scale the data
+                X = X * desired_std + desired_mean
+
+                # Ensure the data is within the desired range
+                X = torch.clamp(X, 0, 255)
             
             # Forward-pass to get activations
             with torch.no_grad():
